@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-type: "direct"
+    assignees:
+      - "frazzer951"
+    groups:
+      cargo:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-type: "direct"
+    assignees:
+      - "frazzer951"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
