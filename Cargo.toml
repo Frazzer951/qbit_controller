@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 qbit-rs = "0.4"
 tokio   = { version = "1", features = ["full"] }
+serde   = { version = "1.0", features = ["derive"] }
+config  = { version = "0.13", features = ["yaml"] }
+anyhow  = "1.0"

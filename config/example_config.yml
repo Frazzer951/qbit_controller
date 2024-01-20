@@ -1,0 +1,4 @@
+qbit:
+  url: http://{{ip/url}}:{{port}}
+  username: username
+  password: password
