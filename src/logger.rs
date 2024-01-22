@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::LevelFilter;
 use log4rs::{
     append::{
@@ -10,12 +10,30 @@ use log4rs::{
             RollingFileAppender,
         },
     },
-    config::{Appender, Logger, Root},
+    config::{Appender, Root},
     encode::pattern::PatternEncoder,
-    Config,
+    filter::threshold::ThresholdFilter,
+    Config, Handle,
 };
 
-pub fn setup_logger() -> Result<()> {
+pub fn setup_logger() -> Result<Handle> {
+    let log_config = generate_config(LevelFilter::Info)?;
+
+    match log4rs::init_config(log_config) {
+        Ok(handle) => Ok(handle),
+        Err(e) => Err(anyhow!("Error initializing logger: {}", e)),
+    }
+}
+
+pub fn update_logger(handle: &Handle, log_level: LevelFilter) -> Result<()> {
+    let log_config = generate_config(log_level)?;
+
+    handle.set_config(log_config);
+
+    Ok(())
+}
+
+fn generate_config(log_level: LevelFilter) -> Result<Config> {
     let pattern = "{({d(%Y-%m-%d %H:%M:%S)} {h({l})}):<25} - {m}{n}";
 
     let stdout: ConsoleAppender = ConsoleAppender::builder()
@@ -34,20 +52,24 @@ pub fn setup_logger() -> Result<()> {
         .build("config/qbit_controller.log", Box::new(compound_policy))
         .unwrap();
 
-    let log_config = Config::builder()
-        .appender(Appender::builder().build("console", Box::new(stdout)))
-        .appender(Appender::builder().build("file", Box::new(logfile)))
-        .logger(Logger::builder().build("app::console", LevelFilter::Info)) // Console logger
-        .logger(Logger::builder().build("app::file", LevelFilter::Trace)) // File logger
+    match Config::builder()
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(log_level)))
+                .build("console", Box::new(stdout)),
+        )
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(LevelFilter::Trace)))
+                .build("file", Box::new(logfile)),
+        )
         .build(
             Root::builder()
                 .appender("console")
                 .appender("file")
                 .build(LevelFilter::Trace),
-        )
-        .unwrap();
-
-    log4rs::init_config(log_config).unwrap();
-
-    Ok(())
+        ) {
+        Ok(config) => Ok(config),
+        Err(e) => Err(anyhow!("Error generating config: {}", e)),
+    }
 }

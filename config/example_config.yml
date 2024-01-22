@@ -2,3 +2,30 @@ qbit:
   url: http://{{ip/url}}:{{port}}
   username: username
   password: password
+
+settings:
+  # If true, the script will debug logs to the console
+  debug: false
+
+  # If true, the script won't modify QbitTorrent
+  dry_run: false
+
+processes:
+  # Run tag_names process
+  tag_names: true
+
+# Optional: Add tags to torrents based on name
+names:
+  # name: The torrent's name with be matched against this
+  #   tag: The tag(s) to add to the torrent if the name matches
+  name_1:
+    tags:
+      - tag_a
+      - tag_b
+  other_name:
+    tags:
+      - tag_c
+  "name with spaces":
+    tags:
+      - tag_d
+      - tag_e
