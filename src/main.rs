@@ -1,5 +1,6 @@
 mod config;
 mod constants;
+mod logger;
 
 use anyhow::Result;
 use config::load_config;
@@ -24,8 +25,12 @@ async fn run() -> Result<()> {
 
 #[tokio::main]
 async fn main() {
+    logger::setup_logger().unwrap();
+
+    log::info!("Starting qbit-controller");
+
     if let Err(e) = run().await {
-        eprintln!("{e}");
+        log::error!("{e}");
         std::process::exit(1);
     }
 }
