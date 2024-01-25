@@ -7,7 +7,7 @@ appenders:
       - kind: threshold
         level: debug # Log level for console
     encoder:
-      pattern: "{({d(%Y-%m-%d %H:%M:%S)} {h({l})}):<25} - {m}{n}"
+      pattern: "{({d(%Y-%m-%dT%H:%M:%S%:z)} {h({l})}):<31} - {m}{n}"
 
   file:
     kind: rolling_file
@@ -15,7 +15,7 @@ appenders:
       - kind: threshold
         level: trace # Log level for file
     encoder:
-      pattern: "{({d(%Y-%m-%d %H:%M:%S)} {h({l})}):<25} - {m}{n}"
+      pattern: "{({d(%Y-%m-%dT%H:%M:%S%:z)} {h({l})}):<31} - {m}{n}"
     path: "config/qbit_controller.log"
     policy:
       kind: compound
