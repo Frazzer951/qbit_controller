@@ -1,11 +1,9 @@
 mod config;
 mod constants;
-mod logger;
 mod processes;
 
 use anyhow::Result;
 use config::{load_config, ControllerConfig};
-use log4rs::Handle;
 use processes::tag_names;
 use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 use qbit_rs::Qbit;
@@ -22,14 +20,10 @@ async fn process_torrents(
     Ok(())
 }
 
-async fn run(log_handle: Handle) -> Result<()> {
+async fn run() -> Result<()> {
     let config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_FILE;
 
     let config = load_config(config_path.as_str())?;
-
-    if config.settings.debug {
-        logger::update_logger(&log_handle, log::LevelFilter::Debug)?;
-    }
 
     log::debug!("{:#?}", config);
 
@@ -46,13 +40,17 @@ async fn run(log_handle: Handle) -> Result<()> {
     Ok(())
 }
 
+pub fn setup_logger() -> Result<()> {
+    log4rs::init_file("log_config.yml", Default::default())
+}
+
 #[tokio::main]
 async fn main() {
-    let log_handle = logger::setup_logger().unwrap();
+    setup_logger().unwrap();
 
     log::info!("Starting qbit-controller");
 
-    if let Err(e) = run(log_handle).await {
+    if let Err(e) = run().await {
         log::error!("{e}");
         std::process::exit(1);
     }
