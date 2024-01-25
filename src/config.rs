@@ -26,7 +26,6 @@ pub struct Processes {
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
-    pub debug: bool,
     pub dry_run: bool,
 }
 

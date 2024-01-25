@@ -27,6 +27,10 @@ async fn run() -> Result<()> {
 
     log::debug!("{:#?}", config);
 
+    if config.settings.dry_run {
+        log::info!("Dry run enabled, no changes will be made");
+    }
+
     let credential = Credential::new(&config.qbit.username, &config.qbit.password);
     let qbit = Qbit::new(config.qbit.url.as_str(), credential);
 
