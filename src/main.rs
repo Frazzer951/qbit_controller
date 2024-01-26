@@ -13,6 +13,14 @@ async fn process_torrents(
     qbit: Qbit,
     torrents: Vec<Torrent>,
 ) -> Result<()> {
+    if config.settings.enable_auto_management {
+        log::info!("Enabling auto management for all torrents");
+        if !config.settings.dry_run {
+            let hashes: Vec<String> = torrents.iter().map(|t| t.hash.clone().unwrap()).collect();
+            qbit.set_auto_management(hashes, true).await?;
+        }
+    }
+
     if config.processes.tag_names {
         tag_names::process_tag_names(config, qbit, torrents).await?;
     }

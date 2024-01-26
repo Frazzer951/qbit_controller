@@ -4,11 +4,11 @@ qbit:
   password: password
 
 settings:
-  # If true, the script will debug logs to the console
-  debug: false
-
   # If true, the script won't modify QbitTorrent
   dry_run: false
+
+  # If true, it will enable auto management for all torrents
+  enable_auto_management: true
 
 processes:
   # Run tag_names process
