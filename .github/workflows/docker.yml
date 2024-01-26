@@ -51,9 +51,11 @@ jobs:
           tags: |
             # set latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=branch
-            type=ref,event=tag
+            type=sha
 
       - name: Build and push Docker image
         id: build-and-push
