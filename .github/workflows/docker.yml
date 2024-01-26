@@ -2,10 +2,13 @@ name: Docker
 
 on:
   push:
-    branches: ["main"]
-    tags: ["v*.*.*"]
+    branches:
+      - "main"
+    tags:
+      - "v*"
   pull_request:
-    branches: ["main"]
+    branches:
+      - "main"
 
 env:
   REGISTRY: ghcr.io
@@ -45,6 +48,12 @@ jobs:
         uses: docker/metadata-action@v5.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # set latest tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+            type=ref,event=branch
+            type=ref,event=tag
 
       - name: Build and push Docker image
         id: build-and-push
