@@ -5,7 +5,7 @@ appenders:
     kind: console
     filters:
       - kind: threshold
-        level: debug # Log level for console
+        level: info # Log level for console
     encoder:
       pattern: "{({d(%Y-%m-%dT%H:%M:%S%:z)} {h({l})}):<31} - {m}{n}"
 
