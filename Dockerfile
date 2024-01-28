@@ -9,9 +9,6 @@ COPY . .
 # Build your project
 RUN cargo build --release
 
-# Copy the required files
-COPY log_config.yml .
-
 # Final stage
 FROM ubuntu:latest
 
@@ -26,5 +23,11 @@ COPY --from=builder /usr/src/myapp/target/release/qbit_controller .
 # Copy the required files
 COPY --from=builder /usr/src/myapp/log_config.yml .
 
-# Set the startup command to run your binary
-CMD ["./qbit_controller"]
+# Copy the run script
+COPY run.sh .
+
+# Make the run script executable
+RUN chmod +x ./run.sh
+
+# Set the run script as the startup command
+ENTRYPOINT ["./run.sh"]
