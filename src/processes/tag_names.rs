@@ -6,21 +6,21 @@ use qbit_rs::{model::Torrent, Qbit};
 use crate::config::ControllerConfig;
 
 pub async fn process_tag_names(
-    config: ControllerConfig,
-    qbit: Qbit,
-    torrents: Vec<Torrent>,
+    config: &ControllerConfig,
+    qbit: &Qbit,
+    torrents: &Vec<Torrent>,
 ) -> Result<()> {
-    let names_config = match config.names {
+    let names_config = match &config.names {
         Some(names) => names,
         None => return Err(anyhow!("No names config found, skipping tag_names process")),
     };
 
     for torrent in torrents {
-        let torrent_name = match torrent.name {
+        let torrent_name = match &torrent.name {
             Some(name) => name,
             None => continue,
         };
-        let torrent_tags = match torrent.tags {
+        let torrent_tags = match &torrent.tags {
             Some(tags) => tags.split(',').map(|s| s.to_owned()).collect(),
             None => HashSet::new(),
         };
@@ -43,7 +43,7 @@ pub async fn process_tag_names(
 
             if !config.settings.dry_run {
                 let tags = vec![new_tags.into_iter().collect::<Vec<_>>().join(",")];
-                qbit.add_torrent_tags(vec![torrent.hash.unwrap()], tags)
+                qbit.add_torrent_tags(vec![torrent.hash.clone().unwrap()], tags)
                     .await?;
             }
         }
