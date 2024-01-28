@@ -1,7 +1,12 @@
-use std::collections::HashMap;
-
-use config::{Config, ConfigError};
+use anyhow::Result;
+use config::Config;
+use fs_err as fs;
 use serde::Deserialize;
+use std::{collections::HashMap, path::Path};
+
+use crate::constants;
+
+const EXAMPLE_CONFIG: &str = include_str!("../config/example_config.yml");
 
 #[derive(Debug, Deserialize)]
 pub struct ControllerConfig {
@@ -35,11 +40,17 @@ pub struct Name {
     pub tags: Vec<String>,
 }
 
-pub fn load_config(config_path: &str) -> Result<ControllerConfig, ConfigError> {
+pub fn load_config(config_path: &str) -> Result<ControllerConfig> {
+    let example_config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_EXAMPLE_FILE;
+    if !Path::new(&example_config_path).exists() {
+        log::info!("Creating example config file at {}", example_config_path);
+        fs::write(example_config_path, EXAMPLE_CONFIG)?;
+    }
+
     let settings = Config::builder()
         .add_source(config::File::with_name(config_path))
         .build()?;
-    settings.try_deserialize()
+    Ok(settings.try_deserialize()?)
 }
 
 #[cfg(test)]
