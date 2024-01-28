@@ -21,7 +21,7 @@ pub async fn process_tag_names(
             None => continue,
         };
         let torrent_tags = match &torrent.tags {
-            Some(tags) => tags.split(',').map(|s| s.to_owned()).collect(),
+            Some(tags) => tags.split(',').map(|s| s.trim().to_owned()).collect(),
             None => HashSet::new(),
         };
 
@@ -34,15 +34,12 @@ pub async fn process_tag_names(
         }
 
         if new_tags != torrent_tags {
-            log::info!(
-                "Updating tags for torrent {torrent_name} from {torrent_tags:?} to {new_tags:?}",
-                torrent_name = torrent_name,
-                torrent_tags = torrent_tags,
-                new_tags = new_tags
-            );
+            // Get only the new tags
+            let tags: HashSet<String> = new_tags.difference(&torrent_tags).cloned().collect();
+            log::info!("Adding tags for torrent {torrent_name}: {tags:?}",);
 
             if !config.settings.dry_run {
-                let tags = vec![new_tags.into_iter().collect::<Vec<_>>().join(",")];
+                let tags = vec![tags.into_iter().collect::<Vec<_>>().join(",")];
                 qbit.add_torrent_tags(vec![torrent.hash.clone().unwrap()], tags)
                     .await?;
             }

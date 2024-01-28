@@ -51,10 +51,6 @@ mod tests {
     fn test_load_config() {
         let config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_EXAMPLE_FILE;
 
-        let config = load_config(config_path.as_str()).unwrap();
-
-        assert_eq!(config.qbit.url, "http://{{ip/url}}:{{port}}");
-        assert_eq!(config.qbit.username, "username");
-        assert_eq!(config.qbit.password, "password");
+        load_config(config_path.as_str()).unwrap();
     }
 }

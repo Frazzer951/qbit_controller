@@ -22,7 +22,7 @@ async fn process_torrents(
     }
 
     if config.processes.tag_names {
-        tag_names::process_tag_names(config, qbit, torrents).await?;
+        tag_names::process_tag_names(&config, &qbit, &torrents).await?;
     }
 
     Ok(())
