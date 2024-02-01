@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow  = "1.0"
-config  = { version = "0.13", features = ["yaml"] }
+config  = { version = "0.14", features = ["yaml"] }
 fs-err  = "2.11"
 log     = "0.4"
 log4rs  = { version = "1.2", features = [] }
