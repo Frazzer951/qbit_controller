@@ -9,7 +9,7 @@ use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 use qbit_rs::Qbit;
 
 async fn process_torrents(
-    config: ControllerConfig,
+    config: &ControllerConfig,
     qbit: Qbit,
     torrents: Vec<Torrent>,
 ) -> Result<()> {
@@ -24,7 +24,10 @@ async fn process_torrents(
     }
 
     if config.processes.tag_names {
-        tag_names::process_tag_names(&config, &qbit, &torrents).await?;
+        if !config.settings.quiet {
+            log::info!("Processing tag names");
+        }
+        tag_names::process_tag_names(config, &qbit, &torrents).await?;
     }
 
     Ok(())
@@ -54,7 +57,11 @@ async fn run() -> Result<()> {
 
     let torrents = qbit.get_torrent_list(GetTorrentListArg::default()).await?;
 
-    process_torrents(config, qbit, torrents).await?;
+    process_torrents(&config, qbit, torrents).await?;
+
+    if !config.settings.quiet {
+        log::info!("qbit-controller finished successfully");
+    }
 
     Ok(())
 }

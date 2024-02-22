@@ -14,6 +14,7 @@ pub async fn process_tag_names(
         Some(names) => names,
         None => return Err(anyhow!("No names config found, skipping tag_names process")),
     };
+    log::debug!("names_config: {names_config:?}",);
 
     for torrent in torrents {
         let torrent_name = match &torrent.name {
@@ -28,7 +29,10 @@ pub async fn process_tag_names(
         let mut new_tags = torrent_tags.clone();
 
         for (name, name_config) in names_config.iter() {
-            if torrent_name.contains(name) {
+            if torrent_name.to_lowercase().contains(&name.to_lowercase()) {
+                if !config.settings.quiet {
+                    log::info!("Found match for {name} in torrent {torrent_name}",);
+                }
                 new_tags.extend(name_config.tags.clone());
             }
         }
