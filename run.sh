@@ -6,7 +6,7 @@ SLEEP_DURATION=${qbit_con_schedule:-120}
 while true; do
   ./qbit_controller
   # Print the sleep duration
-  echo "Sleeping for $SLEEP_DURATION minutes..."
+  # echo "Sleeping for $SLEEP_DURATION minutes..."
   # Sleep for the specified duration
-  # sleep "${SLEEP_DURATION}m"
+  sleep "${SLEEP_DURATION}m"
 done
