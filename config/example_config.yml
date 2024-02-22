@@ -10,6 +10,9 @@ settings:
   # If true, it will enable auto management for all torrents
   enable_auto_management: true
 
+  # Only log changes made to torrents
+  quiet: false
+
 processes:
   # Run tag_names process
   tag_names: true
