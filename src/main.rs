@@ -14,7 +14,9 @@ async fn process_torrents(
     torrents: Vec<Torrent>,
 ) -> Result<()> {
     if config.settings.enable_auto_management {
-        log::info!("Enabling auto management for all torrents");
+        if !config.settings.quiet {
+            log::info!("Enabling auto management for all torrents");
+        }
         if !config.settings.dry_run {
             let hashes: Vec<String> = torrents.iter().map(|t| t.hash.clone().unwrap()).collect();
             qbit.set_auto_management(hashes, true).await?;
@@ -32,8 +34,11 @@ async fn run() -> Result<()> {
     let config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_FILE;
 
     let config = load_config(config_path.as_str())?;
-
     log::debug!("{:#?}", config);
+
+    if !config.settings.quiet {
+        log::info!("Starting qbit-controller");
+    }
 
     if config.settings.dry_run {
         log::info!("Dry run enabled, no changes will be made");
@@ -43,7 +48,9 @@ async fn run() -> Result<()> {
     let qbit = Qbit::new(config.qbit.url.as_str(), credential);
 
     let qbit_version = qbit.get_version().await?;
-    log::info!("QbitTorrent Version: {qbit_version}");
+    if !config.settings.quiet {
+        log::info!("QbitTorrent Version: {qbit_version}");
+    }
 
     let torrents = qbit.get_torrent_list(GetTorrentListArg::default()).await?;
 
@@ -59,8 +66,6 @@ pub fn setup_logger() -> Result<()> {
 #[tokio::main]
 async fn main() {
     setup_logger().unwrap();
-
-    log::info!("Starting qbit-controller");
 
     if let Err(e) = run().await {
         log::error!("{e}");

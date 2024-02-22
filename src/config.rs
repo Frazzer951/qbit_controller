@@ -33,6 +33,7 @@ pub struct Processes {
 pub struct Settings {
     pub dry_run: bool,
     pub enable_auto_management: bool,
+    pub quiet: bool,
 }
 
 #[derive(Debug, Deserialize)]
