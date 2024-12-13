@@ -23,7 +23,7 @@ COPY config/example_config.yml ./config/example_config.yml
 
 RUN touch src/main.rs && cargo build --release
 
-FROM alpine:3.19
+FROM alpine:3.21
 
 WORKDIR /
 COPY --from=builder /usr/src/myapp/target/release/qbit_controller /qbit_controller
