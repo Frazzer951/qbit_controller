@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/ash
 
 # Default sleep duration to 2 hours (120 minutes)
 SLEEP_DURATION=${qbit_con_schedule:-120}

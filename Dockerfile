@@ -1,21 +1,29 @@
-FROM rust:latest as builder
+FROM rust:1.83-alpine AS builder
 
-# Set the working directory
+RUN apk add --no-cache \
+    musl-dev \
+    openssl-dev \
+    pkgconf \
+    openssl-libs-static \
+    gcc
+
 WORKDIR /usr/src/myapp
 
-# Copy the Rust project files
-COPY . .
+COPY Cargo.toml ./
 
-# Build your project
-RUN cargo build --release
+# Create a dummy main.rs to build dependencies
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
 
-# Final stage
-FROM ubuntu:latest
+COPY src ./src
+COPY log_config.yml ./
+COPY config/example_config.yml ./config/example_config.yml
 
-# Update and install necessary libraries
-RUN apt-get update && \
-    apt-get install -y libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
+RUN touch src/main.rs && cargo build --release
+
+FROM alpine:3.19
 
 WORKDIR /
 COPY --from=builder /usr/src/myapp/target/release/qbit_controller /qbit_controller
@@ -24,4 +32,4 @@ COPY run.sh /run.sh
 
 RUN chmod +x /run.sh
 
-ENTRYPOINT ["/run.sh"]
+ENTRYPOINT ["./run.sh"]
