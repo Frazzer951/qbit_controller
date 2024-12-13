@@ -11,3 +11,19 @@ A simple manager for qBitTorrent. It gives you more control over your torrents.
 - [ ] Share limits
 - [ ] Tracker management
 - [ ] Blocklist management
+
+
+## Local Testing
+
+### Build
+```sh
+docker build -t qbit-controller .
+```
+
+### Run
+```sh
+docker run --rm -it`
+    -v "${PWD}/docker_config:/config" `
+    -e qbit_con_schedule=120 `
+    qbit-controller
+```

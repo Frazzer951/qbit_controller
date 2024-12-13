@@ -17,17 +17,11 @@ RUN apt-get update && \
     apt-get install -y libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the build artifact from the build stage
-COPY --from=builder /usr/src/myapp/target/release/qbit_controller .
+WORKDIR /
+COPY --from=builder /usr/src/myapp/target/release/qbit_controller /qbit_controller
+COPY --from=builder /usr/src/myapp/log_config.yml /log_config.yml
+COPY run.sh /run.sh
 
-# Copy the required files
-COPY --from=builder /usr/src/myapp/log_config.yml .
+RUN chmod +x /run.sh
 
-# Copy the run script
-COPY run.sh .
-
-# Make the run script executable
-RUN chmod +x ./run.sh
-
-# Set the run script as the startup command
-ENTRYPOINT ["./run.sh"]
+ENTRYPOINT ["/run.sh"]
