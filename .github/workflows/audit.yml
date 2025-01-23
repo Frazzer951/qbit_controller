@@ -1,4 +1,5 @@
 name: Security audit
+
 on:
   push:
     paths:
@@ -8,10 +9,12 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  security_audit:
+  audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v2.0.0
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check
+      - uses: rustsec/audit-check@v1.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

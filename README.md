@@ -22,7 +22,7 @@ docker build -t qbit-controller .
 
 ### Run
 ```sh
-docker run --rm -it`
+docker run --rm -it `
     -v "${PWD}/docker_config:/config" `
     -e qbit_con_schedule=120 `
     qbit-controller
