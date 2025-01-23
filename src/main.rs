@@ -4,7 +4,7 @@ mod processes;
 
 use anyhow::Result;
 use config::{load_config, ControllerConfig};
-use processes::tag_names;
+use processes::{tag_names,cat_moves};
 use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 use qbit_rs::Qbit;
 
@@ -28,6 +28,13 @@ async fn process_torrents(
             log::info!("Processing tag names");
         }
         tag_names::process_tag_names(config, &qbit, &torrents).await?;
+    }
+
+    if config.processes.cat_move {
+        if !config.settings.quiet {
+            log::info!("Processing category moves");
+        }
+        cat_moves::process_cat_moves(config, &qbit, &torrents).await?;
     }
 
     Ok(())

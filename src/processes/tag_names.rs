@@ -40,7 +40,7 @@ pub async fn process_tag_names(
         if new_tags != torrent_tags {
             // Get only the new tags
             let tags: HashSet<String> = new_tags.difference(&torrent_tags).cloned().collect();
-            log::info!("Adding tags for torrent {torrent_name}: {tags:?}",);
+            log::info!("Adding tags for torrent {torrent_name}: {tags:?}");
 
             if !config.settings.dry_run {
                 let tags = vec![tags.into_iter().collect::<Vec<_>>().join(",")];

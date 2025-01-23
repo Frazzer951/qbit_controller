@@ -52,12 +52,17 @@
     "processes": {
       "type": "object",
       "required": [
-        "tag_names"
+        "tag_names",
+        "cat_move"
       ],
       "properties": {
         "tag_names": {
           "type": "boolean",
           "description": "Run tag_names process"
+        },
+        "cat_move": {
+          "type": "boolean",
+          "description": "Run cat_move process"
         }
       }
     },
@@ -79,6 +84,47 @@
         }
       },
       "description": "Optional: Add tags to torrents based on name"
+    },
+    "cat_moves": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "new_category"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "categories"
+            ]
+          },
+          {
+            "required": [
+              "tags"
+            ]
+          }
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "new_category": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Move torrents to new categories based on their current category or tags"
     }
   }
 }

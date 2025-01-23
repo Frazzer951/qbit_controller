@@ -16,6 +16,7 @@ pub struct ControllerConfig {
     pub processes: Processes,
 
     pub names: Option<HashMap<String, Name>>,
+    pub cat_moves: Option<HashMap<String, CatMove>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,6 +29,7 @@ pub struct Qbit {
 #[derive(Debug, Deserialize)]
 pub struct Processes {
     pub tag_names: bool,
+    pub cat_move: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,6 +42,13 @@ pub struct Settings {
 #[derive(Debug, Deserialize)]
 pub struct Name {
     pub tags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CatMove {
+    pub categories: Option<Vec<String>>,
+    pub tags: Option<Vec<String>>,
+    pub new_category: String,
 }
 
 fn write_if_different(path: &str, contents: &str) -> Result<()> {
