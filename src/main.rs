@@ -4,7 +4,7 @@ mod processes;
 
 use anyhow::Result;
 use config::{load_config, ControllerConfig};
-use processes::{tag_names,cat_moves};
+use processes::{cat_moves, tag_names};
 use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 use qbit_rs::Qbit;
 

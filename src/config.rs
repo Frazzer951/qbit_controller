@@ -64,8 +64,8 @@ fn write_if_different(path: &str, contents: &str) -> Result<()> {
 pub fn load_config(config_path: &str) -> Result<ControllerConfig> {
     let example_config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_EXAMPLE_FILE;
     let config_schema_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_SCHEMA_FILE;
-    write_if_different(&example_config_path,EXAMPLE_CONFIG)?;
-    write_if_different(&config_schema_path,CONFIG_SCHEMA)?;
+    write_if_different(&example_config_path, EXAMPLE_CONFIG)?;
+    write_if_different(&config_schema_path, CONFIG_SCHEMA)?;
 
     let settings = Config::builder()
         .add_source(config::File::with_name(config_path))
