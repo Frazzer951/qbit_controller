@@ -1,4 +1,4 @@
-FROM rust:1.83-alpine AS builder
+FROM rust:1.84-alpine AS builder
 
 RUN apk add --no-cache \
     musl-dev \
@@ -20,6 +20,7 @@ RUN mkdir src && \
 COPY src ./src
 COPY log_config.yml ./
 COPY config/example_config.yml ./config/example_config.yml
+COPY config/config_schema.json ./config/config_schema.json
 
 RUN touch src/main.rs && cargo build --release
 

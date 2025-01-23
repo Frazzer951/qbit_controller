@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "qbit",
+    "settings",
+    "processes"
+  ],
+  "properties": {
+    "qbit": {
+      "type": "object",
+      "required": [
+        "url",
+        "username",
+        "password"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^http://.*$"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "required": [
+        "dry_run",
+        "enable_auto_management",
+        "quiet"
+      ],
+      "properties": {
+        "dry_run": {
+          "type": "boolean",
+          "description": "If true, the script won't modify QbitTorrent"
+        },
+        "enable_auto_management": {
+          "type": "boolean",
+          "description": "If true, it will enable auto management for all torrents"
+        },
+        "quiet": {
+          "type": "boolean",
+          "description": "Only log changes made to torrents"
+        }
+      }
+    },
+    "processes": {
+      "type": "object",
+      "required": [
+        "tag_names"
+      ],
+      "properties": {
+        "tag_names": {
+          "type": "boolean",
+          "description": "Run tag_names process"
+        }
+      }
+    },
+    "names": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "description": "Optional: Add tags to torrents based on name"
+    }
+  }
+}

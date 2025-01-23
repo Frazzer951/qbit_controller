@@ -2,11 +2,12 @@ use anyhow::Result;
 use config::Config;
 use fs_err as fs;
 use serde::Deserialize;
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use crate::constants;
 
 const EXAMPLE_CONFIG: &str = include_str!("../config/example_config.yml");
+const CONFIG_SCHEMA: &str = include_str!("../config/config_schema.json");
 
 #[derive(Debug, Deserialize)]
 pub struct ControllerConfig {
@@ -41,12 +42,21 @@ pub struct Name {
     pub tags: Vec<String>,
 }
 
+fn write_if_different(path: &str, contents: &str) -> Result<()> {
+    if let Ok(existing) = fs::read_to_string(path) {
+        if existing == contents {
+            return Ok(());
+        }
+    }
+    log::info!("Writing file at {}", path);
+    Ok(fs::write(path, contents)?)
+}
+
 pub fn load_config(config_path: &str) -> Result<ControllerConfig> {
     let example_config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_EXAMPLE_FILE;
-    if !Path::new(&example_config_path).exists() {
-        log::info!("Creating example config file at {}", example_config_path);
-        fs::write(example_config_path, EXAMPLE_CONFIG)?;
-    }
+    let config_schema_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_SCHEMA_FILE;
+    write_if_different(&example_config_path,EXAMPLE_CONFIG)?;
+    write_if_different(&config_schema_path,CONFIG_SCHEMA)?;
 
     let settings = Config::builder()
         .add_source(config::File::with_name(config_path))
