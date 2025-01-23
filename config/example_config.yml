@@ -18,6 +18,8 @@ settings:
 processes:
   # Run tag_names process
   tag_names: true
+  # Run cat_move process
+  cat_move: true
 
 # Optional: Add tags to torrents based on name
 names:
@@ -34,3 +36,20 @@ names:
     tags:
       - tag_d
       - tag_e
+
+# Optional
+cat_move:
+  group:
+    new_category: group_cat
+    categories:
+      - cat_1
+      - cat_2
+    tags:
+      - tag_a
+      - tag_b
+
+  finished:
+    new_category: finished
+    categories:
+      - cat_1
+      - cat_2
