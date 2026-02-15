@@ -3,10 +3,10 @@ mod constants;
 mod processes;
 
 use anyhow::Result;
-use config::{load_config, ControllerConfig};
+use config::{ControllerConfig, load_config};
 use processes::{cat_moves, tag_names};
-use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 use qbit_rs::Qbit;
+use qbit_rs::model::{Credential, GetTorrentListArg, Torrent};
 
 async fn process_torrents(
     config: &ControllerConfig,

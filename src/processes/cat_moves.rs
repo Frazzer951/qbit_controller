@@ -1,7 +1,7 @@
 use std::collections::hash_set::HashSet;
 
-use anyhow::{anyhow, Result};
-use qbit_rs::{model::Torrent, Qbit};
+use anyhow::{Result, anyhow};
+use qbit_rs::{Qbit, model::Torrent};
 
 use crate::config::ControllerConfig;
 
@@ -15,7 +15,7 @@ pub async fn process_cat_moves(
         None => {
             return Err(anyhow!(
                 "No cat_moves config found, skipping cat_moves process"
-            ))
+            ));
         }
     };
     log::debug!("cat_moves_config: {cat_moves_config:?}",);
@@ -66,7 +66,9 @@ pub async fn process_cat_moves(
 
         // Update category if changed
         if new_category != torrent_category {
-            log::info!("Setting category for '{torrent_name}' from '{torrent_category}' to '{new_category}'");
+            log::info!(
+                "Setting category for '{torrent_name}' from '{torrent_category}' to '{new_category}'"
+            );
             if !config.settings.dry_run {
                 qbit.set_torrent_category(vec![torrent.hash.clone().unwrap()], &new_category)
                     .await?;

@@ -54,10 +54,10 @@ pub struct CatMove {
 }
 
 fn write_if_different(path: &str, contents: &str) -> Result<()> {
-    if let Ok(existing) = fs::read_to_string(path) {
-        if existing == contents {
-            return Ok(());
-        }
+    if let Ok(existing) = fs::read_to_string(path)
+        && existing == contents
+    {
+        return Ok(());
     }
     log::info!("Writing file at {}", path);
     Ok(fs::write(path, contents)?)

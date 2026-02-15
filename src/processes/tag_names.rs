@@ -1,7 +1,7 @@
 use std::collections::hash_set::HashSet;
 
-use anyhow::{anyhow, Result};
-use qbit_rs::{model::Torrent, Qbit};
+use anyhow::{Result, anyhow};
+use qbit_rs::{Qbit, model::Torrent};
 
 use crate::config::ControllerConfig;
 
