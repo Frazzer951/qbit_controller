@@ -1,4 +1,4 @@
-FROM rust:1.85-alpine AS builder
+FROM rust:1.93-alpine AS builder
 
 RUN apk add --no-cache \
     musl-dev \
@@ -24,7 +24,7 @@ COPY config/config_schema.json ./config/config_schema.json
 
 RUN touch src/main.rs && cargo build --release
 
-FROM alpine:3.21
+FROM alpine:3.23
 
 WORKDIR /
 COPY --from=builder /usr/src/myapp/target/release/qbit_controller /qbit_controller
