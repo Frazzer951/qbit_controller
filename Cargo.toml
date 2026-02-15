@@ -1,13 +1,13 @@
 [package]
 name    = "qbit_controller"
-version = "0.2.1"
-edition = "2021"
+version = "0.2.2"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow   = "1.0"
-config   = { version = "0.15", features = ["yaml"] }
+config   = { version = "0.15", features = ["yaml", "preserve_order"] }
 fs-err   = "3.0"
 indexmap = { version = "2", features = ["serde"] }
 log      = "0.4"
