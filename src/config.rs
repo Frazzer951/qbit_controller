@@ -4,6 +4,8 @@ use fs_err as fs;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
+
 use crate::constants;
 
 const EXAMPLE_CONFIG: &str = include_str!("../config/example_config.yml");
@@ -16,7 +18,7 @@ pub struct ControllerConfig {
     pub processes: Processes,
 
     pub names: Option<HashMap<String, Name>>,
-    pub cat_moves: Option<HashMap<String, CatMove>>,
+    pub cat_moves: Option<IndexMap<String, CatMove>>,
 }
 
 #[derive(Debug, Deserialize)]
