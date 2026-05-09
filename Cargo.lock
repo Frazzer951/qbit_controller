@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "qbit_controller"
-version = "0.2.3"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "config",
