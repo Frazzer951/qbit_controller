@@ -14,11 +14,16 @@ const CONFIG_SCHEMA: &str = include_str!("../config/config_schema.json");
 #[derive(Debug, Deserialize)]
 pub struct ControllerConfig {
     pub qbit: Qbit,
+    #[serde(default)]
     pub settings: Settings,
+    #[serde(default)]
     pub processes: Processes,
 
     pub names: Option<HashMap<String, Name>>,
+    #[serde(alias = "cat_move")]
     pub cat_moves: Option<IndexMap<String, CatMove>>,
+    pub trackers: Option<IndexMap<String, TrackerRule>>,
+    pub share_limits: Option<IndexMap<String, ShareLimit>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,17 +33,72 @@ pub struct Qbit {
     pub password: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Processes {
+    #[serde(default)]
     pub tag_names: bool,
+    #[serde(default)]
     pub cat_move: bool,
+    #[serde(default)]
+    pub tracker_tags: bool,
+    #[serde(default)]
+    pub tracker_errors: bool,
+    #[serde(default)]
+    pub share_limits: bool,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
+    #[serde(default)]
     pub dry_run: bool,
+    #[serde(default)]
     pub enable_auto_management: bool,
+    #[serde(default)]
+    pub auto_management_ignore_tags: Vec<String>,
+    #[serde(default)]
     pub quiet: bool,
+    #[serde(default = "default_share_limits_tag")]
+    pub share_limits_tag: String,
+    #[serde(default = "default_tracker_error_tag")]
+    pub tracker_error_tag: String,
+    #[serde(default = "default_min_seeding_time_tag")]
+    pub share_limits_min_seeding_time_tag: String,
+    #[serde(default = "default_min_num_seeds_tag")]
+    pub share_limits_min_num_seeds_tag: String,
+    #[serde(default)]
+    pub share_limits_filter_completed: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            dry_run: false,
+            enable_auto_management: false,
+            auto_management_ignore_tags: Vec::new(),
+            quiet: false,
+            share_limits_tag: default_share_limits_tag(),
+            tracker_error_tag: default_tracker_error_tag(),
+            share_limits_min_seeding_time_tag: default_min_seeding_time_tag(),
+            share_limits_min_num_seeds_tag: default_min_num_seeds_tag(),
+            share_limits_filter_completed: true,
+        }
+    }
+}
+
+fn default_share_limits_tag() -> String {
+    "z".to_owned()
+}
+
+fn default_tracker_error_tag() -> String {
+    "issue".to_owned()
+}
+
+fn default_min_seeding_time_tag() -> String {
+    "MinSeedTimeNotReached".to_owned()
+}
+
+fn default_min_num_seeds_tag() -> String {
+    "MinSeedsNotMet".to_owned()
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,6 +111,59 @@ pub struct CatMove {
     pub categories: Option<Vec<String>>,
     pub tags: Option<Vec<String>>,
     pub new_category: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TrackerRule {
+    #[serde(deserialize_with = "deserialize_string_or_vec")]
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ShareLimit {
+    pub priority: u32,
+    #[serde(default)]
+    pub cleanup: bool,
+    pub max_ratio: Option<f64>,
+    pub max_seeding_time: Option<DurationValue>,
+    pub min_seeding_time: Option<DurationValue>,
+    pub min_num_seeds: Option<i64>,
+    pub limit_upload_speed: Option<i64>,
+    #[serde(default = "default_true")]
+    pub resume_torrent_after_change: bool,
+    pub categories: Option<Vec<String>>,
+    pub include_all_tags: Option<Vec<String>>,
+    pub include_any_tags: Option<Vec<String>>,
+    pub exclude_all_tags: Option<Vec<String>>,
+    pub exclude_any_tags: Option<Vec<String>>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum DurationValue {
+    Minutes(i64),
+    Text(String),
+}
+
+fn deserialize_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        String(String),
+        Vec(Vec<String>),
+    }
+
+    match StringOrVec::deserialize(deserializer)? {
+        StringOrVec::String(value) => Ok(vec![value]),
+        StringOrVec::Vec(values) => Ok(values),
+    }
 }
 
 fn write_if_different(path: &str, contents: &str) -> Result<()> {

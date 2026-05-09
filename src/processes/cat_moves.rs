@@ -1,13 +1,14 @@
-use std::collections::hash_set::HashSet;
+use std::collections::HashSet;
 
 use anyhow::{Result, anyhow};
-use qbit_rs::{Qbit, model::Torrent};
 
 use crate::config::ControllerConfig;
+use crate::processes::common::{parse_tags, torrent_hash};
+use crate::qbit_api::{QbitClient, Torrent};
 
 pub async fn process_cat_moves(
     config: &ControllerConfig,
-    qbit: &Qbit,
+    qbit: &QbitClient,
     torrents: &Vec<Torrent>,
 ) -> Result<()> {
     let cat_moves_config = match &config.cat_moves {
@@ -25,10 +26,7 @@ pub async fn process_cat_moves(
             Some(name) => name,
             None => continue,
         };
-        let torrent_tags: HashSet<String> = match &torrent.tags {
-            Some(tags) => tags.split(',').map(|s| s.trim().to_owned()).collect(),
-            None => HashSet::new(),
-        };
+        let torrent_tags: HashSet<String> = parse_tags(&torrent.tags);
         let torrent_category = match &torrent.category {
             Some(cat) => cat.to_owned(),
             None => "".to_owned(),
@@ -70,7 +68,7 @@ pub async fn process_cat_moves(
                 "Setting category for '{torrent_name}' from '{torrent_category}' to '{new_category}'"
             );
             if !config.settings.dry_run {
-                qbit.set_torrent_category(vec![torrent.hash.clone().unwrap()], &new_category)
+                qbit.set_category(&[torrent_hash(torrent)?], &new_category)
                     .await?;
             }
         }

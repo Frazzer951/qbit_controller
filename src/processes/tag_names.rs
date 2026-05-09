@@ -1,14 +1,15 @@
-use std::collections::hash_set::HashSet;
+use std::collections::HashSet;
 
 use anyhow::{Result, anyhow};
-use qbit_rs::{Qbit, model::Torrent};
 
 use crate::config::ControllerConfig;
+use crate::processes::common::{parse_tags, torrent_hash};
+use crate::qbit_api::{QbitClient, Torrent};
 
 pub async fn process_tag_names(
     config: &ControllerConfig,
-    qbit: &Qbit,
-    torrents: &Vec<Torrent>,
+    qbit: &QbitClient,
+    torrents: &mut [Torrent],
 ) -> Result<()> {
     let names_config = match &config.names {
         Some(names) => names,
@@ -21,10 +22,7 @@ pub async fn process_tag_names(
             Some(name) => name,
             None => continue,
         };
-        let torrent_tags = match &torrent.tags {
-            Some(tags) => tags.split(',').map(|s| s.trim().to_owned()).collect(),
-            None => HashSet::new(),
-        };
+        let torrent_tags = parse_tags(&torrent.tags);
 
         let mut new_tags = torrent_tags.clone();
 
@@ -43,12 +41,21 @@ pub async fn process_tag_names(
             log::info!("Adding tags for torrent {torrent_name}: {tags:?}");
 
             if !config.settings.dry_run {
-                let tags = vec![tags.into_iter().collect::<Vec<_>>().join(",")];
-                qbit.add_torrent_tags(vec![torrent.hash.clone().unwrap()], tags)
-                    .await?;
+                qbit.add_tags(
+                    &[torrent_hash(torrent)?],
+                    &tags.into_iter().collect::<Vec<_>>(),
+                )
+                .await?;
             }
+            torrent.tags = Some(sorted_tags_string(&new_tags));
         }
     }
 
     Ok(())
+}
+
+fn sorted_tags_string(tags: &HashSet<String>) -> String {
+    let mut tags: Vec<&String> = tags.iter().collect();
+    tags.sort();
+    tags.into_iter().cloned().collect::<Vec<_>>().join(", ")
 }

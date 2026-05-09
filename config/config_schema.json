@@ -1,68 +1,102 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": [
-    "qbit",
-    "settings",
-    "processes"
-  ],
+  "required": ["qbit"],
   "properties": {
     "qbit": {
       "type": "object",
-      "required": [
-        "url",
-        "username",
-        "password"
-      ],
+      "required": ["url", "username", "password"],
       "properties": {
-        "url": {
-          "type": "string",
-          "pattern": "^http://.*$"
-        },
-        "username": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
-        }
+        "url": { "type": "string", "pattern": "^https?://.*$" },
+        "username": { "type": "string" },
+        "password": { "type": "string" }
       }
     },
     "settings": {
       "type": "object",
-      "required": [
-        "dry_run",
-        "enable_auto_management",
-        "quiet"
-      ],
       "properties": {
-        "dry_run": {
-          "type": "boolean",
-          "description": "If true, the script won't modify QbitTorrent"
+        "dry_run": { "type": "boolean" },
+        "enable_auto_management": { "type": "boolean" },
+        "auto_management_ignore_tags": {
+          "type": "array",
+          "items": { "type": "string" }
         },
-        "enable_auto_management": {
-          "type": "boolean",
-          "description": "If true, it will enable auto management for all torrents"
-        },
-        "quiet": {
-          "type": "boolean",
-          "description": "Only log changes made to torrents"
-        }
+        "quiet": { "type": "boolean" },
+        "share_limits_tag": { "type": "string" },
+        "tracker_error_tag": { "type": "string" },
+        "share_limits_min_seeding_time_tag": { "type": "string" },
+        "share_limits_min_num_seeds_tag": { "type": "string" },
+        "share_limits_filter_completed": { "type": "boolean" }
       }
     },
     "processes": {
       "type": "object",
-      "required": [
-        "tag_names",
-        "cat_move"
-      ],
       "properties": {
-        "tag_names": {
-          "type": "boolean",
-          "description": "Run tag_names process"
-        },
-        "cat_move": {
-          "type": "boolean",
-          "description": "Run cat_move process"
+        "tag_names": { "type": "boolean" },
+        "cat_move": { "type": "boolean" },
+        "tracker_tags": { "type": "boolean" },
+        "tracker_errors": { "type": "boolean" },
+        "share_limits": { "type": "boolean" }
+      }
+    },
+    "trackers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["tags"],
+        "properties": {
+          "tags": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    "share_limits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["priority"],
+        "properties": {
+          "priority": { "type": "integer" },
+          "cleanup": { "type": "boolean" },
+          "max_ratio": { "type": "number" },
+          "max_seeding_time": { "$ref": "#/definitions/duration" },
+          "min_seeding_time": { "$ref": "#/definitions/duration" },
+          "min_num_seeds": { "type": "integer" },
+          "limit_upload_speed": { "type": "integer" },
+          "resume_torrent_after_change": { "type": "boolean" },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "include_all_tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "include_any_tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "exclude_all_tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "exclude_any_tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
         }
       }
     },
@@ -70,61 +104,50 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": [
-          "tags"
-        ],
+        "required": ["tags"],
         "properties": {
           "tags": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "minItems": 1
           }
         }
-      },
-      "description": "Optional: Add tags to torrents based on name"
+      }
+    },
+    "cat_moves": {
+      "$ref": "#/definitions/cat_moves"
+    },
+    "cat_move": {
+      "$ref": "#/definitions/cat_moves"
+    }
+  },
+  "definitions": {
+    "duration": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string", "pattern": "^-?[0-9]+$|^([0-9]+[mhdw])+$" }
+      ]
     },
     "cat_moves": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": [
-          "new_category"
-        ],
-        "anyOf": [
-          {
-            "required": [
-              "categories"
-            ]
-          },
-          {
-            "required": [
-              "tags"
-            ]
-          }
-        ],
+        "required": ["new_category"],
+        "anyOf": [{ "required": ["categories"] }, { "required": ["tags"] }],
         "properties": {
           "categories": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "minItems": 1
           },
           "tags": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "minItems": 1
           },
-          "new_category": {
-            "type": "string"
-          }
+          "new_category": { "type": "string" }
         }
-      },
-      "description": "Move torrents to new categories based on their current category or tags"
+      }
     }
   }
 }
