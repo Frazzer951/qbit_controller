@@ -1,36 +1,38 @@
 FROM rust:1.95-alpine AS builder
 
-RUN apk add --no-cache \
-    musl-dev \
-    openssl-dev \
-    pkgconf \
-    openssl-libs-static \
-    gcc
+RUN apk add --no-cache musl-dev
 
-WORKDIR /usr/src/myapp
+WORKDIR /usr/src/qbit_controller
 
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
+COPY rust-toolchain.toml ./
 
-# Create a dummy main.rs to build dependencies
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
+    cargo build --release --locked && \
     rm -rf src
 
+COPY config ./config
 COPY src ./src
-COPY log_config.yml ./
-COPY config/example_config.yml ./config/example_config.yml
-COPY config/config_schema.json ./config/config_schema.json
 
-RUN touch src/main.rs && cargo build --release
+RUN touch src/main.rs && cargo build --release --locked
 
 FROM alpine:3.23
 
+RUN apk add --no-cache ca-certificates && \
+    addgroup -g 1000 -S qbit && \
+    adduser -u 1000 -S -D -H -G qbit qbit && \
+    mkdir -p /config && \
+    chown -R qbit:qbit /config
+
 WORKDIR /
-COPY --from=builder /usr/src/myapp/target/release/qbit_controller /qbit_controller
-COPY --from=builder /usr/src/myapp/log_config.yml /log_config.yml
+
+COPY --from=builder /usr/src/qbit_controller/target/release/qbit_controller /qbit_controller
+COPY log_config.yml /log_config.yml
 COPY run.sh /run.sh
 
 RUN chmod +x /run.sh
+
+USER qbit
 
 ENTRYPOINT ["./run.sh"]
