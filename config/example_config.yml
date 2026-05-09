@@ -11,15 +11,65 @@ settings:
 
   # If true, it will enable auto management for all torrents
   enable_auto_management: true
+  auto_management_ignore_tags:
+    - cross-seed
 
   # Only log changes made to torrents
   quiet: false
+  share_limits_tag: z
+  tracker_error_tag: issue
+  share_limits_min_seeding_time_tag: MinSeedTimeNotReached
+  share_limits_min_num_seeds_tag: MinSeedsNotMet
+  share_limits_filter_completed: true
 
 processes:
   # Run tag_names process
   tag_names: true
   # Run cat_move process
   cat_move: true
+  # Tag torrents based on tracker URLs
+  tracker_tags: true
+  # Add tracker_error_tag when no tracker is working
+  tracker_errors: true
+  # Apply qbit_manage-style share limits
+  share_limits: true
+
+trackers:
+  digitalcore.club:
+    tags: DigitalCore
+  iptorrents|stackoverflow.tech|routing.bgp.technology|async.empirehost.me:
+    tags: iptorrents
+  nyaa.tracker.wf:
+    tags: Nyaa
+  other:
+    tags: other
+
+share_limits:
+  CROSS_SEED:
+    priority: 1
+    min_num_seeds: 10
+    include_all_tags:
+      - cross-seed
+    max_seeding_time: 30d
+    cleanup: false
+  IPT:
+    priority: 2
+    max_seeding_time: 30d
+    min_num_seeds: 10
+    include_all_tags:
+      - iptorrents
+    cleanup: false
+  default:
+    priority: 999
+    max_ratio: 1
+    max_seeding_time: 1d
+    categories:
+      - movies-complete
+      - tv-complete
+      - anime-complete
+      - anime-movies-complete
+      - manual-complete
+    cleanup: true
 
 # Optional: Add tags to torrents based on name
 names:
@@ -38,7 +88,7 @@ names:
       - tag_e
 
 # Optional
-cat_move:
+cat_moves:
   group:
     new_category: group_cat
     categories:
