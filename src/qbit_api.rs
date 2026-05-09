@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use reqwest::{Client, StatusCode, Url};
+use reqwest::{Client, StatusCode, Url, header::SET_COOKIE};
 use serde::{Deserialize, Serialize};
 
 use crate::config;
@@ -114,8 +114,14 @@ impl QbitClient {
             .await?;
 
         let status = response.status();
+        let has_sid_cookie = response
+            .headers()
+            .get_all(SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .any(|value| value.contains("SID="));
         let body = response.text().await.unwrap_or_default();
-        if status == StatusCode::OK && body.trim() == "Ok." {
+        if is_login_success(status, body.trim(), has_sid_cookie) {
             return Ok(());
         }
 
@@ -374,6 +380,28 @@ impl QbitClient {
         let response = self.client.post(self.url(path)?).form(arg).send().await?;
         ensure_success(response).await?;
         Ok(())
+    }
+}
+
+fn is_login_success(status: StatusCode, body: &str, has_sid_cookie: bool) -> bool {
+    status.is_success() && (body.is_empty() || body == "Ok." || has_sid_cookie)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_qbit_login_success_responses() {
+        assert!(is_login_success(StatusCode::OK, "Ok.", false));
+        assert!(is_login_success(StatusCode::NO_CONTENT, "", false));
+        assert!(is_login_success(StatusCode::OK, "", true));
+    }
+
+    #[test]
+    fn rejects_qbit_login_failures() {
+        assert!(!is_login_success(StatusCode::OK, "Fails.", false));
+        assert!(!is_login_success(StatusCode::FORBIDDEN, "", false));
     }
 }
 
