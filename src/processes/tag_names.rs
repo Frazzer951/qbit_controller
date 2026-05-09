@@ -3,13 +3,15 @@ use std::collections::HashSet;
 use anyhow::{Result, anyhow};
 
 use crate::config::ControllerConfig;
-use crate::processes::common::{parse_tags, torrent_hash};
+use crate::processes::common::{dry_run_prefix, parse_tags, torrent_hash};
+use crate::processes::stats::RunStats;
 use crate::qbit_api::{QbitClient, Torrent};
 
 pub async fn process_tag_names(
     config: &ControllerConfig,
     qbit: &QbitClient,
     torrents: &mut [Torrent],
+    stats: &mut RunStats,
 ) -> Result<()> {
     let names_config = match &config.names {
         Some(names) => names,
@@ -28,17 +30,23 @@ pub async fn process_tag_names(
 
         for (name, name_config) in names_config.iter() {
             if torrent_name.to_lowercase().contains(&name.to_lowercase()) {
-                if !config.settings.quiet {
-                    log::info!("Found match for {name} in torrent {torrent_name}",);
-                }
                 new_tags.extend(name_config.tags.clone());
             }
         }
 
         if new_tags != torrent_tags {
-            // Get only the new tags
             let tags: HashSet<String> = new_tags.difference(&torrent_tags).cloned().collect();
-            log::info!("Adding tags for torrent {torrent_name}: {tags:?}");
+            let tags_sorted: Vec<&String> = {
+                let mut v: Vec<&String> = tags.iter().collect();
+                v.sort();
+                v
+            };
+            log::info!(
+                "{}{:<10} '{torrent_name}' tags={tags_sorted:?}",
+                dry_run_prefix(config),
+                "tag-add",
+            );
+            stats.name_tags_added += tags.len();
 
             if !config.settings.dry_run {
                 qbit.add_tags(

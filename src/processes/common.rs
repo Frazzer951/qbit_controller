@@ -2,7 +2,18 @@ use std::collections::HashSet;
 
 use anyhow::{Result, anyhow};
 
-use crate::{config::DurationValue, qbit_api::Torrent};
+use crate::{
+    config::{ControllerConfig, DurationValue},
+    qbit_api::Torrent,
+};
+
+pub fn dry_run_prefix(config: &ControllerConfig) -> &'static str {
+    if config.settings.dry_run {
+        "[DRY-RUN] "
+    } else {
+        ""
+    }
+}
 
 pub fn torrent_hash(torrent: &Torrent) -> Result<String> {
     torrent

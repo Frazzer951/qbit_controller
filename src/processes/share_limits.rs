@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use anyhow::{Result, anyhow};
 
 use crate::config::{ControllerConfig, ShareLimit};
-use crate::processes::common::{is_complete, parse_duration_minutes, parse_tags, torrent_hash};
+use crate::processes::common::{
+    dry_run_prefix, is_complete, parse_duration_minutes, parse_tags, torrent_hash,
+};
+use crate::processes::stats::RunStats;
 use crate::qbit_api::{MinuteLimit, QbitClient, RatioLimit, Torrent};
 
 #[derive(Debug, Clone)]
@@ -16,6 +19,7 @@ pub async fn process_share_limits(
     config: &ControllerConfig,
     qbit: &QbitClient,
     torrents: &mut [Torrent],
+    stats: &mut RunStats,
 ) -> Result<()> {
     let share_limits = match &config.share_limits {
         Some(share_limits) => share_limits,
@@ -68,14 +72,18 @@ pub async fn process_share_limits(
             torrent_name,
             &current_tags,
             &desired_managed_tags,
+            stats,
         )
         .await?;
 
         if should_cleanup(group.config, torrent, protection.is_protected())? {
             log::info!(
-                "Deleting torrent '{torrent_name}' and data after share limit group '{}' was reached",
-                group.name
+                "{}{:<10} '{torrent_name}' group={} (limit reached)",
+                dry_run_prefix(config),
+                "delete",
+                group.name,
             );
+            stats.share_limits_cleaned_up += 1;
             if !config.settings.dry_run {
                 qbit.delete_torrents(std::slice::from_ref(&hash), true)
                     .await?;
@@ -92,26 +100,41 @@ pub async fn process_share_limits(
             )
         };
 
-        log::info!(
-            "Applying share limit group '{}' to '{torrent_name}'",
-            group.name
-        );
-        if !config.settings.dry_run {
-            qbit.set_share_limits(
-                std::slice::from_ref(&hash),
-                ratio_limit,
-                seeding_time_limit,
-                MinuteLimit::Global,
-            )
-            .await?;
+        let share_limits_match = ratio_limit_matches(ratio_limit, torrent.ratio_limit)
+            && seeding_time_limit_matches(seeding_time_limit, torrent.seeding_time_limit);
+        let desired_upload_bytes = group.config.limit_upload_speed.map(upload_limit_bytes);
+        let upload_limit_match =
+            desired_upload_bytes.is_none_or(|bytes| upload_limit_matches(bytes, torrent.up_limit));
 
-            if let Some(limit) = group.config.limit_upload_speed {
-                qbit.set_upload_limit(std::slice::from_ref(&hash), upload_limit_bytes(limit))
+        if !share_limits_match || !upload_limit_match {
+            log::info!(
+                "{}{:<10} '{torrent_name}' group={}",
+                dry_run_prefix(config),
+                "apply",
+                group.name,
+            );
+            stats.share_limits_applied += 1;
+            if !config.settings.dry_run {
+                if !share_limits_match {
+                    qbit.set_share_limits(
+                        std::slice::from_ref(&hash),
+                        ratio_limit,
+                        seeding_time_limit,
+                        MinuteLimit::Global,
+                    )
                     .await?;
-            }
+                }
 
-            if group.config.resume_torrent_after_change {
-                qbit.start_torrents(std::slice::from_ref(&hash)).await?;
+                if let Some(bytes) = desired_upload_bytes
+                    && !upload_limit_match
+                {
+                    qbit.set_upload_limit(std::slice::from_ref(&hash), bytes)
+                        .await?;
+                }
+
+                if group.config.resume_torrent_after_change {
+                    qbit.start_torrents(std::slice::from_ref(&hash)).await?;
+                }
             }
         }
 
@@ -131,6 +154,7 @@ async fn sync_managed_tags(
     torrent_name: &str,
     current_tags: &HashSet<String>,
     desired_managed_tags: &HashSet<String>,
+    stats: &mut RunStats,
 ) -> Result<()> {
     let tags_to_remove: Vec<String> = current_tags
         .iter()
@@ -144,7 +168,12 @@ async fn sync_managed_tags(
         .collect();
 
     if !tags_to_remove.is_empty() {
-        log::info!("Removing share-limit tags from '{torrent_name}': {tags_to_remove:?}");
+        log::info!(
+            "{}{:<10} '{torrent_name}' tags={tags_to_remove:?}",
+            dry_run_prefix(config),
+            "tag-remove",
+        );
+        stats.share_limit_tags_removed += tags_to_remove.len();
         if !config.settings.dry_run {
             qbit.remove_tags(std::slice::from_ref(hash), &tags_to_remove)
                 .await?;
@@ -152,7 +181,12 @@ async fn sync_managed_tags(
     }
 
     if !tags_to_add.is_empty() {
-        log::info!("Adding share-limit tags to '{torrent_name}': {tags_to_add:?}");
+        log::info!(
+            "{}{:<10} '{torrent_name}' tags={tags_to_add:?}",
+            dry_run_prefix(config),
+            "tag-add",
+        );
+        stats.share_limit_tags_added += tags_to_add.len();
         if !config.settings.dry_run {
             qbit.add_tags(std::slice::from_ref(hash), &tags_to_add)
                 .await?;
@@ -293,6 +327,42 @@ fn upload_limit_bytes(kib_per_second: i64) -> u64 {
     }
 }
 
+fn ratio_limit_matches(desired: RatioLimit, current: Option<f64>) -> bool {
+    let current = match current {
+        Some(value) => value,
+        None => return false,
+    };
+    match desired {
+        RatioLimit::Global => current == -2.0,
+        RatioLimit::NoLimit => current == -1.0,
+        RatioLimit::Limited(value) => (current - value).abs() < 0.001,
+    }
+}
+
+fn seeding_time_limit_matches(desired: MinuteLimit, current: Option<i64>) -> bool {
+    let current = match current {
+        Some(value) => value,
+        None => return false,
+    };
+    match desired {
+        MinuteLimit::Global => current == -2,
+        MinuteLimit::NoLimit => current == -1,
+        MinuteLimit::Limited(value) => current >= 0 && current as u64 == value,
+    }
+}
+
+fn upload_limit_matches(desired_bytes: u64, current: Option<i64>) -> bool {
+    let current = match current {
+        Some(value) => value,
+        None => return false,
+    };
+    if desired_bytes == 0 {
+        current <= 0
+    } else {
+        current >= 0 && current as u64 == desired_bytes
+    }
+}
+
 fn share_limit_group_tag(config: &ControllerConfig, name: &str, priority: u32) -> String {
     format!("{}_{}.{}", config.settings.share_limits_tag, priority, name)
 }
@@ -333,6 +403,7 @@ mod tests {
     fn torrent(tags: &str, category: &str) -> Torrent {
         Torrent {
             added_on: None,
+            auto_tmm: None,
             category: Some(category.to_owned()),
             hash: Some("hash".to_owned()),
             name: Some("torrent".to_owned()),
@@ -433,5 +504,42 @@ mod tests {
             share_limit_group_tag(&config(), "CROSS_SEED", 1),
             "z_1.CROSS_SEED"
         );
+    }
+
+    #[test]
+    fn ratio_limit_match_detects_each_variant() {
+        assert!(ratio_limit_matches(RatioLimit::Global, Some(-2.0)));
+        assert!(ratio_limit_matches(RatioLimit::NoLimit, Some(-1.0)));
+        assert!(ratio_limit_matches(RatioLimit::Limited(2.5), Some(2.5)));
+        assert!(ratio_limit_matches(RatioLimit::Limited(2.5), Some(2.5001)));
+        assert!(!ratio_limit_matches(RatioLimit::Limited(2.5), Some(3.0)));
+        assert!(!ratio_limit_matches(RatioLimit::Global, Some(-1.0)));
+        assert!(!ratio_limit_matches(RatioLimit::Limited(2.5), None));
+    }
+
+    #[test]
+    fn seeding_time_limit_match_detects_each_variant() {
+        assert!(seeding_time_limit_matches(MinuteLimit::Global, Some(-2)));
+        assert!(seeding_time_limit_matches(MinuteLimit::NoLimit, Some(-1)));
+        assert!(seeding_time_limit_matches(
+            MinuteLimit::Limited(120),
+            Some(120)
+        ));
+        assert!(!seeding_time_limit_matches(
+            MinuteLimit::Limited(120),
+            Some(60)
+        ));
+        assert!(!seeding_time_limit_matches(MinuteLimit::Global, Some(-1)));
+        assert!(!seeding_time_limit_matches(MinuteLimit::Limited(120), None));
+    }
+
+    #[test]
+    fn upload_limit_match_treats_zero_and_negative_as_unlimited() {
+        assert!(upload_limit_matches(0, Some(0)));
+        assert!(upload_limit_matches(0, Some(-1)));
+        assert!(upload_limit_matches(1024, Some(1024)));
+        assert!(!upload_limit_matches(1024, Some(2048)));
+        assert!(!upload_limit_matches(1024, Some(-1)));
+        assert!(!upload_limit_matches(1024, None));
     }
 }

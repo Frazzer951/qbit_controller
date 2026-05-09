@@ -4,13 +4,15 @@ use anyhow::{Result, anyhow};
 use indexmap::IndexMap;
 
 use crate::config::{ControllerConfig, TrackerRule};
-use crate::processes::common::{parse_tags, torrent_hash};
+use crate::processes::common::{dry_run_prefix, parse_tags, torrent_hash};
+use crate::processes::stats::RunStats;
 use crate::qbit_api::{QbitClient, Torrent, Tracker};
 
 pub async fn process_tracker_tags(
     config: &ControllerConfig,
     qbit: &QbitClient,
     torrents: &mut [Torrent],
+    stats: &mut RunStats,
 ) -> Result<()> {
     let tracker_config = match &config.trackers {
         Some(trackers) => trackers,
@@ -41,7 +43,12 @@ pub async fn process_tracker_tags(
         let tags_to_add: Vec<String> = desired_tags.difference(&current_tags).cloned().collect();
 
         if !tags_to_remove.is_empty() {
-            log::info!("Removing tracker tags from '{torrent_name}': {tags_to_remove:?}");
+            log::info!(
+                "{}{:<10} '{torrent_name}' tags={tags_to_remove:?}",
+                dry_run_prefix(config),
+                "tag-remove",
+            );
+            stats.tracker_tags_removed += tags_to_remove.len();
             if !config.settings.dry_run {
                 qbit.remove_tags(std::slice::from_ref(&hash), &tags_to_remove)
                     .await?;
@@ -49,7 +56,12 @@ pub async fn process_tracker_tags(
         }
 
         if !tags_to_add.is_empty() {
-            log::info!("Adding tracker tags to '{torrent_name}': {tags_to_add:?}");
+            log::info!(
+                "{}{:<10} '{torrent_name}' tags={tags_to_add:?}",
+                dry_run_prefix(config),
+                "tag-add",
+            );
+            stats.tracker_tags_added += tags_to_add.len();
             if !config.settings.dry_run {
                 qbit.add_tags(std::slice::from_ref(&hash), &tags_to_add)
                     .await?;
@@ -77,7 +89,12 @@ fn desired_tracker_tags(
         .map(|tracker| tracker.url.as_str())
         .filter(|url| !url.is_empty())
         .collect();
-    let has_working_tracker = trackers.iter().any(|tracker| tracker.status == 2);
+    let real_trackers: Vec<&Tracker> = trackers
+        .iter()
+        .filter(|tracker| is_real_tracker_url(&tracker.url))
+        .collect();
+    let has_working_tracker = real_trackers.iter().any(|tracker| tracker.status == 2);
+    let has_failing_tracker = real_trackers.iter().any(|tracker| tracker.status == 4);
     let mut desired = HashSet::new();
     let mut matched_tracker_rule = false;
 
@@ -105,11 +122,18 @@ fn desired_tracker_tags(
         desired.extend(other_rule.tags.iter().cloned());
     }
 
-    if config.processes.tracker_errors && !has_working_tracker {
+    if config.processes.tracker_errors && has_failing_tracker && !has_working_tracker {
         desired.insert(config.settings.tracker_error_tag.clone());
     }
 
     desired
+}
+
+fn is_real_tracker_url(url: &str) -> bool {
+    matches!(
+        url.split(':').next().unwrap_or(""),
+        "http" | "https" | "udp" | "ws" | "wss"
+    )
 }
 
 fn owned_tracker_tags(
@@ -205,5 +229,50 @@ mod tests {
         }];
 
         assert!(desired_tracker_tags(&config(), &rules, &trackers).contains("issue"));
+    }
+
+    #[test]
+    fn does_not_tag_when_trackers_are_not_yet_contacted_or_updating() {
+        let rules = IndexMap::new();
+        for status in [0, 1, 3] {
+            let trackers = vec![Tracker {
+                url: "https://tracker.example/announce".to_owned(),
+                status,
+                msg: String::new(),
+            }];
+            assert!(
+                !desired_tracker_tags(&config(), &rules, &trackers).contains("issue"),
+                "status {status} should not tag as issue"
+            );
+        }
+    }
+
+    #[test]
+    fn does_not_tag_when_any_real_tracker_is_working() {
+        let rules = IndexMap::new();
+        let trackers = vec![
+            Tracker {
+                url: "https://working.example/announce".to_owned(),
+                status: 2,
+                msg: String::new(),
+            },
+            Tracker {
+                url: "https://broken.example/announce".to_owned(),
+                status: 4,
+                msg: "down".to_owned(),
+            },
+        ];
+        assert!(!desired_tracker_tags(&config(), &rules, &trackers).contains("issue"));
+    }
+
+    #[test]
+    fn ignores_pseudo_trackers_for_error_state() {
+        let rules = IndexMap::new();
+        let trackers = vec![Tracker {
+            url: "** [DHT] **".to_owned(),
+            status: 4,
+            msg: String::new(),
+        }];
+        assert!(!desired_tracker_tags(&config(), &rules, &trackers).contains("issue"));
     }
 }

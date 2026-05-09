@@ -15,6 +15,7 @@ pub struct QbitClient {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Torrent {
     pub added_on: Option<i64>,
+    pub auto_tmm: Option<bool>,
     pub category: Option<String>,
     pub hash: Option<String>,
     pub name: Option<String>,
@@ -211,6 +212,7 @@ impl QbitClient {
             ratio_limit: RatioLimit,
             seeding_time_limit: MinuteLimit,
             inactive_seeding_time_limit: MinuteLimit,
+            share_limit_action: &'static str,
         }
 
         self.post_form(
@@ -220,6 +222,7 @@ impl QbitClient {
                 ratio_limit,
                 seeding_time_limit,
                 inactive_seeding_time_limit,
+                share_limit_action: "Default",
             },
         )
         .await
