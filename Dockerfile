@@ -1,4 +1,4 @@
-FROM rust:1.95-alpine AS builder
+FROM rust:1.96-alpine AS builder
 
 RUN apk add --no-cache musl-dev
 
@@ -17,7 +17,7 @@ COPY src ./src
 
 RUN touch src/main.rs && cargo build --release --locked
 
-FROM alpine:3.23
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates && \
     addgroup -g 1000 -S qbit && \
