@@ -213,6 +213,7 @@ impl QbitClient {
             seeding_time_limit: MinuteLimit,
             inactive_seeding_time_limit: MinuteLimit,
             share_limit_action: &'static str,
+            share_limits_mode: &'static str,
         }
 
         self.post_form(
@@ -223,6 +224,7 @@ impl QbitClient {
                 seeding_time_limit,
                 inactive_seeding_time_limit,
                 share_limit_action: "Default",
+                share_limits_mode: "Default",
             },
         )
         .await
