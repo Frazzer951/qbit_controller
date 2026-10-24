@@ -5,7 +5,6 @@ RUN apk add --no-cache musl-dev
 WORKDIR /usr/src/qbit_controller
 
 COPY Cargo.toml Cargo.lock ./
-COPY rust-toolchain.toml ./
 
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
@@ -17,7 +16,7 @@ COPY src ./src
 
 RUN touch src/main.rs && cargo build --release --locked
 
-FROM alpine:3.23
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates && \
     addgroup -g 1000 -S qbit && \
