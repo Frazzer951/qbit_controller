@@ -14,6 +14,7 @@ use crate::{
 };
 
 const DEFAULT_SCRIPT_FILE: &str = "orphan_cleanup.sh";
+const INCOMPLETE_SUFFIX: &str = ".!qB";
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct OrphanCheckStats {
@@ -33,11 +34,17 @@ pub async fn run_orphan_check(
             "orphan_check.root_dirs must contain at least one local directory"
         ));
     }
+    if torrents.is_empty() {
+        return Err(anyhow!(
+            "qBittorrent returned no torrents; refusing to flag everything as orphaned"
+        ));
+    }
 
     log::info!("=========== Orphan data check ===========");
 
     let referenced_paths = collect_referenced_paths(config, qbit, torrents).await?;
     let root_dirs = local_root_dirs(&config.orphan_check)?;
+    ensure_roots_referenced(&root_dirs, &referenced_paths)?;
     let mut stats = OrphanCheckStats {
         torrents_inspected: torrents.len(),
         referenced_paths: referenced_paths.len(),
@@ -154,23 +161,9 @@ async fn collect_referenced_paths(
 
         for file in files {
             if let Some(content_path) = torrent.content_path.as_deref() {
-                let content_path = normalize_path(&map_qbit_path(
-                    content_path,
-                    &config.orphan_check.path_mappings,
-                ));
-                if file.name
-                    == content_path
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .unwrap_or("")
-                {
-                    paths.insert(content_path);
-                    continue;
-                }
-
                 insert_mapped_path(
                     &mut paths,
-                    &content_path.join(&file.name).to_string_lossy(),
+                    &Path::new(content_path).join(&file.name).to_string_lossy(),
                     &config.orphan_check.path_mappings,
                 );
             }
@@ -244,6 +237,25 @@ fn local_root_dirs(config: &OrphanCheck) -> Result<Vec<PathBuf>> {
         .collect()
 }
 
+fn ensure_roots_referenced(
+    root_dirs: &[PathBuf],
+    referenced_paths: &HashSet<PathBuf>,
+) -> Result<()> {
+    for root_dir in root_dirs {
+        if !referenced_paths
+            .iter()
+            .any(|path| path.starts_with(root_dir))
+        {
+            return Err(anyhow!(
+                "No torrent references a path under {}; check orphan_check.path_mappings \
+                 (qBittorrent paths must map onto the local root dirs)",
+                root_dir.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn collect_orphan_entries(
     root_dir: &Path,
     referenced_paths: &HashSet<PathBuf>,
@@ -272,9 +284,7 @@ fn collect_orphan_entries_inner(
         }
 
         let file_type = entry.file_type()?;
-        let child_has_reference = referenced_paths
-            .iter()
-            .any(|referenced| referenced.starts_with(&path));
+        let child_has_reference = is_referenced(&path, referenced_paths);
 
         if file_type.is_dir() && child_has_reference {
             if collect_orphan_entries_inner(&path, referenced_paths, config, entries)? {
@@ -290,6 +300,22 @@ fn collect_orphan_entries_inner(
     Ok(has_reference)
 }
 
+fn is_referenced(path: &Path, referenced_paths: &HashSet<PathBuf>) -> bool {
+    // qBittorrent's "Append .!qB extension to incomplete files" renames files on
+    // disk while the API keeps reporting the final name.
+    let incomplete_target = path
+        .to_str()
+        .and_then(|path| path.strip_suffix(INCOMPLETE_SUFFIX))
+        .map(PathBuf::from);
+
+    referenced_paths.iter().any(|referenced| {
+        referenced.starts_with(path)
+            || incomplete_target
+                .as_deref()
+                .is_some_and(|target| referenced.starts_with(target))
+    })
+}
+
 fn is_excluded(path: &Path, config: &OrphanCheck) -> bool {
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
         return false;
@@ -302,7 +328,7 @@ fn is_too_new(path: &Path, config: &OrphanCheck) -> Result<bool> {
         return Ok(false);
     }
 
-    let modified = fs::metadata(path)?
+    let modified = fs::symlink_metadata(path)?
         .modified()
         .unwrap_or(SystemTime::UNIX_EPOCH);
     let min_age = Duration::from_secs(config.min_age_minutes * 60);
@@ -318,8 +344,8 @@ fn normalize_path(path: &Path) -> PathBuf {
 }
 
 fn path_size(path: &Path) -> Result<u64> {
-    let metadata = fs::metadata(path)?;
-    if metadata.is_file() {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.is_dir() {
         return Ok(metadata.len());
     }
 
@@ -397,5 +423,110 @@ mod tests {
     fn formats_bytes() {
         assert_eq!(human_bytes(512), "512 B");
         assert_eq!(human_bytes(1536), "1.50 KiB");
+    }
+
+    struct TestDir(PathBuf);
+
+    impl TestDir {
+        fn new(name: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "qbit_controller_{name}_{}_{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&path).unwrap();
+            Self(normalize_path(&path))
+        }
+
+        fn file(&self, relative: &str, contents: &str) -> PathBuf {
+            let path = self.0.join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, contents).unwrap();
+            path
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn collects_only_unreferenced_entries() {
+        let root = TestDir::new("collect");
+        let referenced_file = root.file("Show/Season 1/ep1.mkv", "a");
+        root.file("Show/Season 1/ep1.nfo", "b");
+        root.file("Show/Season 1/ep2.mkv.!qB", "c");
+        root.file("Show/Season 1/ep3.mkv.!qB", "d");
+        root.file("Movie (2020)/movie.mkv", "e");
+        root.file("Old/stale.mkv", "f");
+
+        let referenced = HashSet::from([
+            referenced_file,
+            root.0.join("Show/Season 1/ep2.mkv"),
+            root.0.join("Movie (2020)"),
+            root.0.join("Movie (2020)/movie.mkv"),
+        ]);
+
+        let orphans =
+            collect_orphan_entries(&root.0, &referenced, &OrphanCheck::default()).unwrap();
+
+        assert_eq!(
+            orphans,
+            vec![
+                root.0.join("Old"),
+                root.0.join("Show/Season 1/ep1.nfo"),
+                root.0.join("Show/Season 1/ep3.mkv.!qB"),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_roots_without_any_referenced_path() {
+        let roots = vec![PathBuf::from("/mnt/storage/torrents")];
+
+        let unmapped = HashSet::from([PathBuf::from("/downloads/movies/movie.mkv")]);
+        let err = ensure_roots_referenced(&roots, &unmapped).unwrap_err();
+        assert!(err.to_string().contains("orphan_check.path_mappings"));
+
+        assert!(ensure_roots_referenced(&roots, &HashSet::new()).is_err());
+
+        let mapped = HashSet::from([PathBuf::from("/mnt/storage/torrents/movies/movie.mkv")]);
+        assert!(ensure_roots_referenced(&roots, &mapped).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn does_not_follow_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let root = TestDir::new("symlinks");
+        let kept = root.file("kept/file.mkv", "a");
+        root.file("orphan/data.bin", "1234");
+        symlink(root.0.join("orphan"), root.0.join("orphan/loop")).unwrap();
+        symlink(root.0.join("missing"), root.0.join("orphan/broken")).unwrap();
+        symlink(root.0.join("missing"), root.0.join("broken_top")).unwrap();
+
+        let config = OrphanCheck {
+            min_age_minutes: 1,
+            ..OrphanCheck::default()
+        };
+        assert!(collect_orphan_entries(&root.0, &HashSet::new(), &config).is_ok());
+
+        let referenced = HashSet::from([kept]);
+        let orphans =
+            collect_orphan_entries(&root.0, &referenced, &OrphanCheck::default()).unwrap();
+        assert_eq!(
+            orphans,
+            vec![root.0.join("broken_top"), root.0.join("orphan")]
+        );
+
+        let size = path_size(&root.0.join("orphan")).unwrap();
+        assert!(size >= 4);
+        assert!(path_size(&root.0.join("broken_top")).is_ok());
     }
 }
