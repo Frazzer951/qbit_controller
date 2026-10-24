@@ -2,6 +2,7 @@
 name    = "qbit_controller"
 version = "1.0.0"
 edition = "2024"
+publish = false
 
 [dependencies]
 anyhow   = "1.0"

@@ -1,0 +1,35 @@
+# cargo-deny: run by .github/workflows/audit.yml weekly. Locally: cargo deny check
+
+[graph]
+all-features = true
+
+[advisories]
+# unsafe-libyaml (via log4rs -> serde_yaml) is unmaintained but not ours to replace; flag only direct dependencies.
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+allow = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
