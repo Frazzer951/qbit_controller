@@ -1,53 +1,50 @@
 version: 2
 
 updates:
-  - package-ecosystem: "cargo"
-    directory: "/"
+  - package-ecosystem: cargo
+    directory: /
     schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "direct"
+      interval: weekly
+    open-pull-requests-limit: 5
     assignees:
-      - "frazzer951"
+      - frazzer951
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
-      cargo:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: "*"
+      minor-patch:
         update-types:
-          - "version-update:semver-patch"
+          - minor
+          - patch
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "direct"
+      interval: weekly
+    open-pull-requests-limit: 5
     assignees:
-      - "frazzer951"
+      - frazzer951
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
-      github-actions:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: "*"
+      minor-patch:
         update-types:
-          - "version-update:semver-patch"
+          - minor
+          - patch
 
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: docker
+    directory: /
     schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "direct"
+      interval: weekly
+    open-pull-requests-limit: 5
     assignees:
-      - "frazzer951"
+      - frazzer951
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
-      docker:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: "*"
+      minor-patch:
         update-types:
-          - "version-update:semver-patch"
+          - minor
+          - patch
