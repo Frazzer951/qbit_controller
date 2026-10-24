@@ -39,6 +39,33 @@
         "share_limits": { "type": "boolean" }
       }
     },
+    "orphan_check": {
+      "type": "object",
+      "properties": {
+        "root_dirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "path_mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["qbit", "local"],
+            "properties": {
+              "qbit": { "type": "string" },
+              "local": { "type": "string" }
+            }
+          }
+        },
+        "min_age_minutes": { "type": "integer", "minimum": 0 },
+        "exclude_names": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "script_path": { "type": "string" }
+      }
+    },
     "trackers": {
       "type": "object",
       "additionalProperties": {

@@ -12,3 +12,6 @@ target/
 # IDE Files
 .vscode/
 .idea/
+
+# Generated orphan cleanup script
+config/orphan_cleanup.sh

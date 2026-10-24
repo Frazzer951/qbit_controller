@@ -9,7 +9,7 @@ use processes::stats::{RunStats, log_section};
 use processes::{
     cat_moves,
     common::{dry_run_prefix, parse_tags},
-    share_limits, tag_names, tracker_tags,
+    orphan_check, share_limits, tag_names, tracker_tags,
 };
 use qbit_api::{QbitClient, Torrent};
 
@@ -79,6 +79,32 @@ async fn process_torrents(
 }
 
 pub async fn run() -> Result<()> {
+    run_normal().await
+}
+
+pub async fn run_orphan_check() -> Result<()> {
+    let config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_FILE;
+
+    let config = load_config(config_path.as_str())?;
+    log::debug!("{:#?}", config);
+
+    log::info!("Starting qbit-controller orphan data check");
+
+    let qbit = QbitClient::new(&config.qbit)?;
+    qbit.login().await?;
+
+    let qbit_version = qbit.get_version().await?;
+    log::info!("QbitTorrent Version: {qbit_version}");
+    let webapi_version = qbit.get_webapi_version().await?;
+    log::info!("qBittorrent Web API Version: {webapi_version}");
+
+    let torrents = qbit.get_torrents().await?;
+    orphan_check::run_orphan_check(&config, &qbit, &torrents).await?;
+
+    Ok(())
+}
+
+async fn run_normal() -> Result<()> {
     let config_path = constants::CONFIG_DIR.to_owned() + constants::CONFIG_FILE;
 
     let config = load_config(config_path.as_str())?;

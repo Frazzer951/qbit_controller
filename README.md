@@ -79,6 +79,35 @@ share_limits:
 
 See `config/example_config.yml` for the full surface area.
 
+### Standalone orphan data check
+
+The orphan data check is deliberately not part of the normal maintenance run.
+Run it by hand when needed:
+
+```sh
+cargo run --release -- --orphan-check
+```
+
+It is read-only. It scans `orphan_check.root_dirs` and logs files or directories
+that are not referenced by the current qBittorrent torrent list. It also writes a
+cleanup script (default `config/orphan_cleanup.sh`, override with
+`orphan_check.script_path`) containing one `rm -rf` per orphan. The script is
+never executed by the tool; review it and run it yourself. If qBittorrent
+reports container paths but this tool scans host paths, add `path_mappings`:
+
+```yaml
+orphan_check:
+  root_dirs:
+    - /mnt/storage/torrents
+  path_mappings:
+    - qbit: /downloads
+      local: /mnt/storage/torrents
+  min_age_minutes: 30
+  exclude_names:
+    - .DS_Store
+    - Thumbs.db
+```
+
 ### Notable settings
 
 | Key                                       | Default                | Purpose                                                              |
