@@ -382,7 +382,7 @@ fn sorted_tags_string(tags: &HashSet<String>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{DurationValue, Processes, Qbit, Settings};
+    use crate::config::{DurationValue, OrphanCheck, Processes, Qbit, Settings};
 
     fn config() -> ControllerConfig {
         ControllerConfig {
@@ -393,6 +393,7 @@ mod tests {
             },
             settings: Settings::default(),
             processes: Processes::default(),
+            orphan_check: OrphanCheck::default(),
             names: None,
             cat_moves: None,
             trackers: None,
@@ -405,12 +406,14 @@ mod tests {
             added_on: None,
             auto_tmm: None,
             category: Some(category.to_owned()),
+            content_path: None,
             hash: Some("hash".to_owned()),
             name: Some("torrent".to_owned()),
             num_complete: Some(20),
             progress: Some(1.0),
             ratio: Some(2.0),
             ratio_limit: None,
+            save_path: None,
             seeding_time: Some(2 * 24 * 60 * 60),
             seeding_time_limit: None,
             state: Some("uploading".to_owned()),

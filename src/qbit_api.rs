@@ -17,18 +17,26 @@ pub struct Torrent {
     pub added_on: Option<i64>,
     pub auto_tmm: Option<bool>,
     pub category: Option<String>,
+    pub content_path: Option<String>,
     pub hash: Option<String>,
     pub name: Option<String>,
     pub num_complete: Option<i64>,
     pub progress: Option<f64>,
     pub ratio: Option<f64>,
     pub ratio_limit: Option<f64>,
+    pub save_path: Option<String>,
     pub seeding_time: Option<i64>,
     pub seeding_time_limit: Option<i64>,
     pub state: Option<String>,
     pub tags: Option<String>,
     pub tracker: Option<String>,
     pub up_limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct TorrentFile {
+    pub name: String,
+    pub size: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -150,6 +158,15 @@ impl QbitClient {
         }
 
         self.get_json_with("torrents/trackers", &Arg { hash }).await
+    }
+
+    pub async fn get_torrent_files(&self, hash: &str) -> Result<Vec<TorrentFile>> {
+        #[derive(Serialize)]
+        struct Arg<'a> {
+            hash: &'a str,
+        }
+
+        self.get_json_with("torrents/files", &Arg { hash }).await
     }
 
     pub async fn add_tags(&self, hashes: &[String], tags: &[String]) -> Result<()> {
@@ -392,6 +409,18 @@ fn is_login_success(status: StatusCode, body: &str, has_sid_cookie: bool) -> boo
     status.is_success() && (body.is_empty() || body == "Ok." || has_sid_cookie)
 }
 
+async fn ensure_success(response: reqwest::Response) -> Result<reqwest::Response> {
+    let status = response.status();
+    if status.is_success() {
+        return Ok(response);
+    }
+
+    let body = response.text().await.unwrap_or_default();
+    Err(anyhow!(
+        "qBittorrent API request failed with status {status}: {body}"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -408,16 +437,4 @@ mod tests {
         assert!(!is_login_success(StatusCode::OK, "Fails.", false));
         assert!(!is_login_success(StatusCode::FORBIDDEN, "", false));
     }
-}
-
-async fn ensure_success(response: reqwest::Response) -> Result<reqwest::Response> {
-    let status = response.status();
-    if status.is_success() {
-        return Ok(response);
-    }
-
-    let body = response.text().await.unwrap_or_default();
-    Err(anyhow!(
-        "qBittorrent API request failed with status {status}: {body}"
-    ))
 }

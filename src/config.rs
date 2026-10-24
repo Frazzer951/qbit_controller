@@ -18,6 +18,8 @@ pub struct ControllerConfig {
     pub settings: Settings,
     #[serde(default)]
     pub processes: Processes,
+    #[serde(default)]
+    pub orphan_check: OrphanCheck,
 
     pub names: Option<HashMap<String, Name>>,
     #[serde(alias = "cat_move")]
@@ -45,6 +47,26 @@ pub struct Processes {
     pub tracker_errors: bool,
     #[serde(default)]
     pub share_limits: bool,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct OrphanCheck {
+    #[serde(default)]
+    pub root_dirs: Vec<String>,
+    #[serde(default)]
+    pub path_mappings: Vec<PathMapping>,
+    #[serde(default)]
+    pub min_age_minutes: u64,
+    #[serde(default)]
+    pub exclude_names: Vec<String>,
+    #[serde(default)]
+    pub script_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PathMapping {
+    pub qbit: String,
+    pub local: String,
 }
 
 #[derive(Debug, Deserialize)]

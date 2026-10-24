@@ -161,7 +161,7 @@ fn sorted_tags_string(tags: &HashSet<String>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Processes, Qbit, Settings};
+    use crate::config::{OrphanCheck, Processes, Qbit, Settings};
 
     fn config() -> ControllerConfig {
         ControllerConfig {
@@ -175,6 +175,7 @@ mod tests {
                 tracker_errors: true,
                 ..Processes::default()
             },
+            orphan_check: OrphanCheck::default(),
             names: None,
             cat_moves: None,
             trackers: None,

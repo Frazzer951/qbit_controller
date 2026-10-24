@@ -34,6 +34,32 @@ processes:
   # Apply qbit_manage-style share limits
   share_limits: true
 
+# Optional standalone check. This is not part of the normal run; invoke it with:
+#   qbit_controller --orphan-check
+orphan_check:
+  # Local directories to scan for data not referenced by qBittorrent.
+  root_dirs:
+    - /path/to/torrents
+
+  # Optional path translations when qBittorrent reports container paths but this
+  # tool scans host paths.
+  path_mappings:
+    - qbit: /downloads
+      local: /path/to/torrents
+
+  # Protect recently modified files from being reported.
+  min_age_minutes: 30
+
+  # Simple filename/directory-name exclusions.
+  exclude_names:
+    - .DS_Store
+    - Thumbs.db
+    - "@eaDir"
+
+  # Where to write the generated cleanup script (one `rm -rf` per orphan).
+  # The script is never run automatically. Defaults to config/orphan_cleanup.sh.
+  # script_path: config/orphan_cleanup.sh
+
 trackers:
   digitalcore.club:
     tags: DigitalCore
